@@ -47,7 +47,7 @@ const userLoginCtrl = expressAsyncHandler(async (req, res) => {
       firstName: userExists?.firstName,
       lastName: userExists?.lastName,
       email: userExists?.email,
-      token: generateToken(userExists._ID),
+      token: generateToken(userExists._id),
     });
   } else {
     res.status(401);
@@ -61,7 +61,7 @@ const userLoginCtrl = expressAsyncHandler(async (req, res) => {
 
 const userFetchCtrl = expressAsyncHandler(async (req, res) => {
   try {
-    const users = await User.find({});
+    const users = await User.find({}).select('-password');
     res.json({ length: users.length, users });
   } catch (error) {
     res.json(error);
@@ -69,10 +69,11 @@ const userFetchCtrl = expressAsyncHandler(async (req, res) => {
 });
 
 // -------------
-//Get all User
+//Delete User
 //-------------
 
 const userDeleteCtrl = expressAsyncHandler(async (req, res) => {
+  //validate id
   validateMongodbId(req?.params?.id);
   try {
     const user = await User.findByIdAndDelete(req?.params?.id);
@@ -82,9 +83,67 @@ const userDeleteCtrl = expressAsyncHandler(async (req, res) => {
   }
 });
 
+// -------------
+//User profile
+//-------------\
+
+const userProfileCtrl = expressAsyncHandler(async (req, res) => {
+  const { id } = req.params;
+  validateMongodbId(id);
+  try {
+    const user = await User.findById(id).select('-password');
+    res.json(user);
+  } catch (error) {
+    res.json(error);
+  }
+});
+
+// -------------
+//Update User details
+//-------------
+
+const userUpdateCtrl = expressAsyncHandler(async (req, res) => {
+  const { id } = req?.user;
+  validateMongodbId(id);
+
+  const user = await User.findByIdAndUpdate(
+    id,
+    {
+      firstName: req?.body?.firstName,
+      lastName: req?.body?.lastName,
+      email: req?.body?.email,
+    },
+    {
+      new: true,
+      runValidators: true,
+    }
+  );
+  res.json(user);
+});
+
+// -------------
+//Update User password
+//-------------
+
+const userUpdatePasswordCtrl = expressAsyncHandler(async (req, res) => {
+  const { id } = req?.user;
+  const { password } = req?.body;
+  validateMongodbId(id);
+  const user = await User.findById(id);
+  if (password) {
+    user.password = password;
+    const updatedUser = await user.save();
+    res.json(updatedUser);
+  }
+  req.json(user);
+});
+
 module.exports = {
   userRegisterCtrl,
   userLoginCtrl,
   userFetchCtrl,
   userDeleteCtrl,
+  userProfileCtrl,
+  userUpdateCtrl,
+  userUpdatePasswordCtrl,
 };
